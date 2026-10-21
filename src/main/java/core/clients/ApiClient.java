@@ -2,6 +2,7 @@ package core.clients;
 
 import core.settings.ApiEndpoints;
 import io.restassured.RestAssured;
+import io.restassured.filter.Filter;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
@@ -12,9 +13,36 @@ import java.util.Properties;
 public class ApiClient {
 
     private final String baseUrl;
+    private String token;
 
     public ApiClient() {
         this.baseUrl = determineBaseUrl();
+    }
+
+    public void createToken(String username, String password) {
+        String body = String.format(
+                "{\"username\": \"%s\", \"password\": \"%s\"}", username, password);
+
+        Response response = getRequestSpec()
+                .body(body)
+                .when()
+                .post(ApiEndpoints.AUTH.getPath())
+                .then()
+                .statusCode(200)
+                .extract()
+                .response();
+
+        token = response.jsonPath().getString("token");
+    }
+
+    private Filter addAuthTokenFilter() {
+        return (requestSpec, responseSpec, ctx) -> {
+            if (token != null) {
+                requestSpec.cookie("token", token);
+            }
+
+            return ctx.next(requestSpec, responseSpec);
+        };
     }
 
     private RequestSpecification getRequestSpec() {
@@ -22,7 +50,8 @@ public class ApiClient {
                 .given()
                 .baseUri(baseUrl)
                 .header("Content-Type", "application/json")
-                .header("Accept", "application/json");
+                .header("Accept", "application/json")
+                .filter(addAuthTokenFilter());
     }
 
     public Response ping() {
@@ -45,12 +74,47 @@ public class ApiClient {
                 .response();
     }
 
-    public Response getBookingById(int id) {
+    public Response getBookingById(int bookingId) {
         return getRequestSpec()
                 .when()
-                .get(ApiEndpoints.BOOKING.getPath() + "/" + id)
+                .get(ApiEndpoints.BOOKING.getPath() + "/" + bookingId)
                 .then()
                 .statusCode(200)
+                .extract()
+                .response();
+    }
+
+    public Response getBookingById(int bookingId, int expectedStatusCode) {
+        return getRequestSpec()
+                .pathParam("id", bookingId)
+                .when()
+                .get(ApiEndpoints.BOOKING.getPath() + "/{id}")
+                .then()
+                .statusCode(expectedStatusCode)
+                .extract()
+                .response();
+    }
+
+    public Response deleteBooking(int bookingId) {
+        return getRequestSpec()
+                .pathParam("id", bookingId)
+                .when()
+                .delete(ApiEndpoints.BOOKING.getPath() + "/{id}")
+                .then()
+                .log().all()
+                .statusCode(201)
+                .extract()
+                .response();
+    }
+
+    public Response deleteBooking(int bookingId, int expectedStatusCode) {
+        return getRequestSpec()
+                .pathParam("id", bookingId)
+                .when()
+                .delete(ApiEndpoints.BOOKING.getPath() + "/{id}")
+                .then()
+                .log().all()
+                .statusCode(expectedStatusCode)
                 .extract()
                 .response();
     }
