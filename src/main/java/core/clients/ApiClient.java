@@ -1,13 +1,16 @@
 package core.clients;
 
 import core.settings.ApiEndpoints;
+import io.qameta.allure.Step;
 import io.restassured.RestAssured;
+import io.restassured.config.HttpClientConfig;
 import io.restassured.filter.Filter;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 public class ApiClient {
@@ -48,12 +51,16 @@ public class ApiClient {
     private RequestSpecification getRequestSpec() {
         return RestAssured
                 .given()
+                .config(RestAssured.config().httpClient(HttpClientConfig.httpClientConfig()
+                        .setParam("http.connection.timeout", 15000)
+                        .setParam("http.socket.timeout", 15000)))
                 .baseUri(baseUrl)
                 .header("Content-Type", "application/json")
                 .header("Accept", "application/json")
                 .filter(addAuthTokenFilter());
     }
 
+    @Step("Проверить работоспособность API")
     public Response ping() {
         return getRequestSpec()
                 .when()
@@ -64,6 +71,7 @@ public class ApiClient {
                 .response();
     }
 
+    @Step("Получить список ID бронирований")
     public Response getBooking() {
         return getRequestSpec()
                 .when()
@@ -74,8 +82,24 @@ public class ApiClient {
                 .response();
     }
 
+    @Step("Получить список ID бронирований с фильтрами: {filters}")
+    public Response getBooking(Map<String, String> filters) {
+        return getRequestSpec()
+                .queryParams(filters)
+                .log().uri()
+                .when()
+                .get(ApiEndpoints.BOOKING.getPath())
+                .then()
+                .log().body()
+                .statusCode(200)
+                .extract()
+                .response();
+    }
+
+    @Step("Получить бронирование c ID = {bookingId}")
     public Response getBookingById(int bookingId) {
         return getRequestSpec()
+                .log().uri()
                 .when()
                 .get(ApiEndpoints.BOOKING.getPath() + "/" + bookingId)
                 .then()
@@ -84,6 +108,7 @@ public class ApiClient {
                 .response();
     }
 
+    @Step("Получить бронирование с ID = {bookingId} и проверить, что он вернул статус-код = {expectedStatusCode}")
     public Response getBookingById(int bookingId, int expectedStatusCode) {
         return getRequestSpec()
                 .pathParam("id", bookingId)
@@ -95,6 +120,7 @@ public class ApiClient {
                 .response();
     }
 
+    @Step("Удалить бронирование с ID = {bookingId}")
     public Response deleteBooking(int bookingId) {
         return getRequestSpec()
                 .pathParam("id", bookingId)
@@ -107,6 +133,7 @@ public class ApiClient {
                 .response();
     }
 
+    @Step("Удалить бронирование с ID = {bookingId} и проверить, что он вернул статус-код = {expectedStatusCode}")
     public Response deleteBooking(int bookingId, int expectedStatusCode) {
         return getRequestSpec()
                 .pathParam("id", bookingId)
@@ -115,6 +142,50 @@ public class ApiClient {
                 .then()
                 .log().all()
                 .statusCode(expectedStatusCode)
+                .extract()
+                .response();
+    }
+
+    @Step("Создать бронирование")
+    public Response createBooking(String body) {
+        return getRequestSpec()
+                .body(body)
+                .log().all()
+                .when()
+                .post(ApiEndpoints.BOOKING.getPath())
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract()
+                .response();
+    }
+
+    @Step("Обновление бронирования")
+    public Response putBooking(int bookingId, String body) {
+        return getRequestSpec()
+                .pathParam("id", bookingId)
+                .body(body)
+                .log().all()
+                .when()
+                .put(ApiEndpoints.BOOKING.getPath() + "/{id}")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .extract()
+                .response();
+    }
+
+    @Step("Частичное обновление бронирования")
+    public Response patchBooking(int bookingId, String body) {
+        return getRequestSpec()
+                .pathParam("id", bookingId)
+                .body(body)
+                .log().all()
+                .when()
+                .patch(ApiEndpoints.BOOKING.getPath() + "/{id}")
+                .then()
+                .log().all()
+                .statusCode(200)
                 .extract()
                 .response();
     }
