@@ -3,7 +3,7 @@ package tests;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import core.clients.ApiClient;
 import core.models.Booking;
-import core.models.BookingDetails;
+import core.models.NewBooking;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ public class GetBookingByIdTest {
         Response getResponseBookingId = apiClient.getBookingById(bookingId);
         assertEquals(200, getResponseBookingId.getStatusCode());
 
-        BookingDetails details = getResponseBookingId.as(BookingDetails.class);
+        NewBooking details = getResponseBookingId.as(NewBooking.class);
 
         assertThat(details, notNullValue());
 
