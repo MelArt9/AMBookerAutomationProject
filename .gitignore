@@ -8,6 +8,7 @@ build/
 *.iml
 *.jar
 out/
+allure-results
 
 # Java
 *.class
